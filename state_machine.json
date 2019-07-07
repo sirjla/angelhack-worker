@@ -1,0 +1,60 @@
+{
+  "Comment" : "An example of the Amazon States Language for reading messages from a DynamoDB table and sending them to SQS",
+  "StartAt": "Get Documents",
+  "TimeoutSeconds": 3600,
+  "States": {
+    "Get Documents": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-1:659658108459:function:get_docs:$LATEST"
+        },
+      "ResultPath": "$.List",
+      "Next": "Clean List"
+    },
+    "Clean List": {
+      "Type": "Pass",
+      "Parameters": {
+        "List.$": "$.List['Payload']"
+      },
+      "Next": "For Loop Condition"
+    },
+    "For Loop Condition": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Not": {
+            "Variable": "$.List[0]",
+            "StringEquals": "DONE"
+          },
+          "Next": "Pop Element from List"
+        }
+      ],
+      "Default": "Succeed"
+    },
+    "Parse Document": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+          "FunctionName": "arn:aws:lambda:us-east-1:659658108459:function:parse_doc:$LATEST",
+          "Payload":{  
+            "Item.$": "$.Item"  
+          }
+        },
+      "ResultPath": "$.OUTPUT",
+      "Next": "For Loop Condition"
+    },
+    "Pop Element from List": {
+      "Type": "Pass",
+      "Parameters": {
+        "Item.$": "$.List[0]",
+        "List.$": "$.List[1:]"
+      },
+      "Next": "Parse Document"
+    },
+    "Succeed": {
+      "Type": "Succeed"
+    }
+  }
+}
+ 
